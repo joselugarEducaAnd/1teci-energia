@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador de la factura de la luz</title>
+<style>
+  :root { --v: #417e72; --vo: #2b6156; --vt: #f0f7f6; --vl: #c8ded9; --t: #1f2a30; --g: #5b6770; --p: #d98a3d; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #fff; color: var(--t); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, "DejaVu Sans", Arial, sans-serif; }
+  main { padding: 12px; display: grid; gap: 16px; grid-template-columns: 1fr; }
+  @media (min-width: 720px) { main { grid-template-columns: minmax(260px, 340px) 1fr; } }
+  h2 { font-size: 1rem; margin: 0 0 8px; color: var(--vo); }
+  fieldset { border: 1px solid var(--vl); border-radius: 8px; padding: 8px 12px 10px; margin: 0 0 10px; }
+  legend { font-weight: 700; color: var(--vo); padding: 0 4px; }
+  .campo { display: grid; grid-template-columns: 1fr 92px auto; align-items: center; gap: 6px; margin: 4px 0; }
+  .campo span.u { color: var(--g); font-size: .85em; min-width: 62px; }
+  input[type=text] { width: 92px; padding: 4px 6px; font: inherit; text-align: right; border: 1px solid #b9c4c9; border-radius: 6px; }
+  input[type=text]:focus { outline: 2px solid var(--v); outline-offset: 1px; }
+  input[type=text][aria-invalid=true] { border-color: #c0392b; background: #fdecea; }
+  details summary { cursor: pointer; font-weight: 700; color: var(--vo); padding: 2px 0; }
+  button { font: inherit; border: 1px solid var(--v); background: #fff; color: var(--vo); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+  button:hover { background: var(--vt); }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  td, th { padding: 5px 6px; border-bottom: 1px solid #e3e8ea; text-align: left; vertical-align: top; }
+  td.n, th.n { text-align: right; white-space: nowrap; }
+  td.c { color: var(--g); font-size: .85em; }
+  tr.sub td { font-weight: 700; background: var(--vt); }
+  tr.total td { font-weight: 800; font-size: 1.08em; border-top: 2px solid var(--vo); background: var(--vt); }
+  .barra { display: flex; height: 26px; border-radius: 6px; overflow: hidden; margin: 12px 0 6px; border: 1px solid var(--vl); }
+  .barra div { height: 100%; }
+  .ley { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .85em; color: var(--g); }
+  .ley i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+  .medio { margin: 10px 0 0; font-size: 1.02em; }
+  .mover { margin-top: 14px; border-top: 1px solid var(--vl); padding-top: 10px; }
+  .mover input[type=range] { width: 100%; accent-color: var(--v); }
+  .aviso { color: #a0412b; font-size: .9em; min-height: 1.2em; margin: 4px 0 0; }
+</style>
+</head>
+<body>
+<main>
+  <section aria-labelledby="t-datos">
+    <h2 id="t-datos">Datos de la factura</h2>
+    <fieldset>
+      <legend>Periodo y potencia</legend>
+      <label class="campo">Días de la factura <input type="text" inputmode="numeric" id="dias"><span class="u">días</span></label>
+      <label class="campo">Potencia P1 (punta y llano) <input type="text" inputmode="decimal" id="pc1"><span class="u">kW</span></label>
+      <label class="campo">Potencia P2 (valle) <input type="text" inputmode="decimal" id="pc2"><span class="u">kW</span></label>
+    </fieldset>
+    <fieldset>
+      <legend>Energía consumida</legend>
+      <label class="campo">Punta <input type="text" inputmode="decimal" id="ep"><span class="u">kWh</span></label>
+      <label class="campo">Llano <input type="text" inputmode="decimal" id="el"><span class="u">kWh</span></label>
+      <label class="campo">Valle <input type="text" inputmode="decimal" id="ev"><span class="u">kWh</span></label>
+    </fieldset>
+    <details>
+      <summary>Precios del contrato</summary>
+      <fieldset>
+        <label class="campo">Potencia P1 <input type="text" inputmode="decimal" id="pp1"><span class="u">€/kW·día</span></label>
+        <label class="campo">Potencia P2 <input type="text" inputmode="decimal" id="pp2"><span class="u">€/kW·día</span></label>
+        <label class="campo">Energía en punta <input type="text" inputmode="decimal" id="pep"><span class="u">€/kWh</span></label>
+        <label class="campo">Energía en llano <input type="text" inputmode="decimal" id="pel"><span class="u">€/kWh</span></label>
+        <label class="campo">Energía en valle <input type="text" inputmode="decimal" id="pev"><span class="u">€/kWh</span></label>
+        <label class="campo">Alquiler del contador <input type="text" inputmode="decimal" id="alq"><span class="u">€/día</span></label>
+        <label class="campo">Impuesto eléctrico <input type="text" inputmode="decimal" id="iee"><span class="u">%</span></label>
+        <label class="campo">IVA <input type="text" inputmode="decimal" id="iva"><span class="u">%</span></label>
+      </fieldset>
+    </details>
+    <p><button type="button" id="ejemplo">Valores del ejemplo resuelto</button></p>
+    <p class="aviso" id="aviso" aria-live="polite"></p>
+  </section>
+
+  <section aria-labelledby="t-fac">
+    <h2 id="t-fac">La factura, término a término</h2>
+    <table>
+      <thead><tr><th>Concepto</th><th>Cálculo</th><th class="n">Importe</th></tr></thead>
+      <tbody id="filas"></tbody>
+    </table>
+    <div class="barra" id="barra" role="img" aria-label=""></div>
+    <div class="ley" id="ley"></div>
+    <p class="medio" id="medio" aria-live="polite"></p>
+    <div class="mover">
+      <label for="mover"><strong>Pasar consumo de punta a valle:</strong> <span id="moverv">0 kWh</span></label>
+      <input type="range" id="mover" min="0" max="70" step="1" value="0">
+      <p id="ahorro" aria-live="polite"></p>
+    </div>
+  </section>
+</main>
+<script>
+(function () {
+  'use strict';
+  var EJEMPLO = { dias: 30, pc1: 4.6, pc2: 4.6, ep: 70, el: 80, ev: 100,
+    pp1: 0.09, pp2: 0.01, pep: 0.22, pel: 0.16, pev: 0.10, alq: 0.027, iee: 5.11269632, iva: 21 };
+  var CAMPOS = Object.keys(EJEMPLO);
+  var COL = { pot: '#2b6156', ene: '#6aa597', iee: '#d98a3d', alq: '#9aa5ab', iva: '#c8553d' };
+  var $ = function (id) { return document.getElementById(id); };
+
+  function fmt(x, dec) {
+    return x.toLocaleString('es-ES', { minimumFractionDigits: dec, maximumFractionDigits: dec, useGrouping: false });
+  }
+  function eur(x) { return fmt(x, 2) + ' €'; }
+  function num(x) { var s = fmt(x, 8).replace(/0+$/, '').replace(/,$/, ''); return s; }
+  function r2(x) { return Math.round((x + 1e-9) * 100) / 100; }
+  function lee(id) {
+    var el = $(id), t = el.value.trim().replace(/\s/g, '').replace(',', '.');
+    var v = Number(t), ok = t !== '' && isFinite(v) && v >= 0 && !(id === 'dias' && (v < 1 || v > 366));
+    el.setAttribute('aria-invalid', ok ? 'false' : 'true');
+    return ok ? v : null;
+  }
+  function calcula(d) {
+    var f = {};
+    f.tp1 = r2(d.pc1 * d.dias * d.pp1); f.tp2 = r2(d.pc2 * d.dias * d.pp2); f.tp = r2(f.tp1 + f.tp2);
+    f.tep = r2(d.ep * d.pep); f.tel = r2(d.el * d.pel); f.tev = r2(d.ev * d.pev); f.te = r2(f.tep + f.tel + f.tev);
+    f.iee = r2((f.tp + f.te) * d.iee / 100);
+    f.alq = r2(d.dias * d.alq);
+    f.base = r2(f.tp + f.te + f.iee + f.alq);
+    f.iva = r2(f.base * d.iva / 100);
+    f.total = r2(f.base + f.iva);
+    f.kwh = d.ep + d.el + d.ev;
+    return f;
+  }
+  function fila(c, calc, imp, cls) {
+    return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + c + '</td><td class="c">' + calc + '</td><td class="n">' + eur(imp) + '</td></tr>';
+  }
+  function pinta() {
+    var d = {}, malos = 0;
+    CAMPOS.forEach(function (k) { var v = lee(k); if (v === null) malos++; d[k] = v; });
+    if (malos) { $('aviso').textContent = 'Revisa los datos marcados en rojo: escribe números (con coma o punto decimal) mayores o iguales que cero.'; return; }
+    $('aviso').textContent = '';
+    var f = calcula(d);
+    var h = '';
+    h += fila('Potencia P1', num(d.pc1) + ' kW × ' + d.dias + ' días × ' + num(d.pp1) + ' €/kW·día', f.tp1);
+    h += fila('Potencia P2', num(d.pc2) + ' kW × ' + d.dias + ' días × ' + num(d.pp2) + ' €/kW·día', f.tp2);
+    h += fila('Término de potencia', '', f.tp, 'sub');
+    h += fila('Energía en punta', num(d.ep) + ' kWh × ' + num(d.pep) + ' €/kWh', f.tep);
+    h += fila('Energía en llano', num(d.el) + ' kWh × ' + num(d.pel) + ' €/kWh', f.tel);
+    h += fila('Energía en valle', num(d.ev) + ' kWh × ' + num(d.pev) + ' €/kWh', f.tev);
+    h += fila('Término de energía', '', f.te, 'sub');
+    h += fila('Impuesto eléctrico', num(d.iee) + ' % × ' + eur(r2(f.tp + f.te)), f.iee);
+    h += fila('Alquiler del contador', d.dias + ' días × ' + num(d.alq) + ' €/día', f.alq);
+    h += fila('Base del IVA', '', f.base, 'sub');
+    h += fila('IVA', num(d.iva) + ' % × ' + eur(f.base), f.iva);
+    h += fila('Total de la factura', '', f.total, 'total');
+    $('filas').innerHTML = h;
+    var partes = [['Potencia', f.tp, COL.pot], ['Energía', f.te, COL.ene], ['Impuesto eléctrico', f.iee, COL.iee],
+      ['Alquiler', f.alq, COL.alq], ['IVA', f.iva, COL.iva]];
+    var tot = f.total || 1;
+    $('barra').innerHTML = partes.map(function (p) { return '<div style="width:' + (100 * p[1] / tot) + '%;background:' + p[2] + '"></div>'; }).join('');
+    $('barra').setAttribute('aria-label', 'Reparto de la factura: ' + partes.map(function (p) { return p[0] + ' ' + fmt(100 * p[1] / tot, 0) + ' %'; }).join(', '));
+    $('ley').innerHTML = partes.map(function (p) { return '<span><i style="background:' + p[2] + '"></i>' + p[0] + ' ' + fmt(100 * p[1] / tot, 0) + ' %</span>'; }).join('');
+    $('medio').innerHTML = f.kwh > 0
+      ? 'Energía consumida: <strong>' + num(f.kwh) + ' kWh</strong>. Precio medio, con todo sumado: <strong>' + fmt(f.total / f.kwh, 3) + ' €/kWh</strong>.'
+      : 'Sin consumo, se paga igual la potencia, el alquiler y sus impuestos.';
+    // mover consumo de punta a valle
+    var m = $('mover'); m.max = Math.floor(d.ep); if (+m.value > d.ep) m.value = Math.floor(d.ep);
+    var k = +m.value; $('moverv').textContent = k + ' kWh';
+    if (k > 0) {
+      var d2 = Object.assign({}, d, { ep: d.ep - k, ev: d.ev + k }), f2 = calcula(d2);
+      $('ahorro').innerHTML = 'Con ' + k + ' kWh menos en punta y ' + k + ' kWh más en valle, la factura sería de <strong>' + eur(f2.total) +
+        '</strong>: un ahorro de <strong>' + eur(r2(f.total - f2.total)) + '</strong>.';
+    } else {
+      $('ahorro').textContent = 'Mueve el deslizador para ver cuánto se ahorraría.';
+    }
+    avisaAltura();
+  }
+  function pon(v) { CAMPOS.forEach(function (k) { $(k).value = String(v[k]).replace('.', ','); }); $('mover').value = 0; pinta(); }
+  function avisaAltura() {
+    try { if (window.parent !== window) window.parent.postMessage({ sda08factura: Math.ceil(document.querySelector('main').getBoundingClientRect().height) }, '*'); } catch (e) {}
+  }
+  CAMPOS.forEach(function (k) { $(k).addEventListener('input', pinta); });
+  $('mover').addEventListener('input', pinta);
+  $('ejemplo').addEventListener('click', function () { pon(EJEMPLO); });
+  document.querySelector('details').addEventListener('toggle', avisaAltura);
+  window.addEventListener('resize', avisaAltura);
+  pon(EJEMPLO);
+})();
+</script>
+</body>
+</html>
