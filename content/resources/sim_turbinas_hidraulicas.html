@@ -512,7 +512,7 @@ var TURBINAS_CALC = (function () {
   var RHO = 1000, G = 9.81;
   var T = {
     pelton: { nombre: 'Pelton', clase: 'de acción', H: 400, Q: 8, etaMax: 0.90, rpm: 500, pares: 6,
-      rango: 'saltos grandes (más de 200 m) y caudales pequeños (hasta unos 10 m³/s)', regula: 'la aguja de los inyectores' },
+      rango: 'saltos grandes (más de 200 m) y caudales pequeños (hasta unos 10 m³/s)', regula: 'las agujas de los inyectores' },
     francis: { nombre: 'Francis', clase: 'de reacción', H: 100, Q: 60, etaMax: 0.93, rpm: 250, pares: 12,
       rango: 'saltos medios (de 40 a 600 m) y caudales de 2 a 200 m³/s', regula: 'los álabes directrices del distribuidor' },
     kaplan: { nombre: 'Kaplan', clase: 'de reacción', H: 12, Q: 150, etaMax: 0.92, rpm: 100, pares: 30,
@@ -1006,7 +1006,7 @@ if (typeof module !== 'undefined') module.exports = TURBINAS_CALC;
     Gr.rotulo('Aguja', V(-2.4, 0.15, 0.4), 2);
     Gr.rotulo('Deflector', V(-1.25, -1.15, 0.4), 2);
     Gr.rotulo('Chorro', V(-0.7, 0.05, 0.4), 1);
-    Gr.rotulo('Carcasa', V(-1.4, 3.6, 0.0), 1);
+    Gr.rotulo('Carcasa', V(-0.6, 3.42, 0.0), 1);         // pegado al borde de la tapa (centro de la rueda en y = 1, R = 2,45)
     Gr.rotulo('Foso de desagüe', V(1.3, -2.25, -0.3), 1);
     Gr.rotulo('Alternador', V(0, 2.9, -2.9), 3);
     Gr.vistas = { general: { centro: V(-1.6, 0.4, -1.2), az: 0.5, el: 0.26, dist: 20 }, entrada: { centro: V(-1.9, -0.1, 0), az: 0.25, el: 0.15, dist: 8.5 },
@@ -1132,27 +1132,32 @@ if (typeof module !== 'undefined') module.exports = TURBINAS_CALC;
   function resultados() {
     var r = C.calcular({ turbina: st.turbina, apertura: st.apertura, deflector: st.deflector }), T = C.T[st.turbina];
     $('apertura-o').textContent = Math.round(st.apertura * 100) + ' %';
-    $('que-regula').innerHTML = 'Al cambiar el caudal se mueven ' + T.regula + '. La turbina sigue girando a ' + T.rpm + ' rpm: lo que cambia es la potencia.';
+    var parada = st.turbina === 'pelton' && st.deflector;   // chorro desviado: el alternador se desconecta y la rueda frena
+    $('que-regula').innerHTML = parada
+      ? 'Con el chorro desviado no llega agua a la rueda: el alternador se desconecta de la red y la rueda frena hasta pararse. Mientras, las agujas pueden cerrar despacio, sin golpe de ariete.'
+      : 'Al cambiar el caudal se mueven ' + T.regula + '. La turbina sigue girando a ' + T.rpm + ' rpm: lo que cambia es la potencia.';
     $('como').innerHTML = COMO[st.turbina];
     var m = [metrica('Salto H', L(r.H, 0) + ' m'), metrica('Caudal Q', L(r.Q, r.Q < 10 ? 2 : 1) + ' m³/s'),
-      metrica('Rendimiento de la turbina η', L(r.eta * 100, 1) + ' %'), metrica('Potencia en el eje P', MW(r.P), 'dest'),
-      metrica('Giro', L(r.rpm, 0) + ' rpm'), metrica('Tipo', 'Turbina ' + T.clase)];
+      metrica('Rendimiento de la turbina η', parada ? '— (sin agua en la rueda)' : L(r.eta * 100, 1) + ' %'), metrica('Potencia en el eje P', MW(r.P), 'dest'),
+      metrica('Giro', parada ? '0 rpm (se para)' : L(r.rpm, 0) + ' rpm'), metrica('Tipo', 'Turbina ' + T.clase)];
     if (st.turbina === 'pelton') m.push(metrica('Velocidad del chorro', L(r.vChorro, 1) + ' m/s'), metrica('Diámetro de la rueda', L(r.D, 2) + ' m'));
     if (st.deflector) m.push(metrica('Deflector', 'chorro desviado: la rueda se para', 'aviso'));
     $('metricas').innerHTML = m.join('');
     $('cadena').innerHTML = 'Para ' + T.rango + '.';
     var c = ['<p><i>P</i><sub>t</sub> = <i>ρ</i>·<i>g</i>·<i>Q</i>·<i>H</i> = 1000 · 9,81 · ' + L(r.Q, 2) + ' · ' + L(r.H, 0) + ' = <b>' + MW(r.Pt) + '</b></p>',
-      '<p><i>P</i> = <i>η</i>·<i>P</i><sub>t</sub> = ' + L(r.eta, 3) + ' · ' + MW(r.Pt) + ' = <b>' + MW(r.eta * r.Pt) + '</b>' + (st.deflector ? ' (con el deflector no llega agua a la rueda: 0 MW)' : '') + '</p>'];
+      parada ? '<p>Con el deflector, el chorro no llega a la rueda: <i>P</i> = <b>0 MW</b>. Esa potencia del agua se pierde en el foso mientras las agujas cierran despacio.</p>'
+        : '<p><i>P</i> = <i>η</i>·<i>P</i><sub>t</sub> = ' + L(r.eta, 3) + ' · ' + MW(r.Pt) + ' = <b>' + MW(r.eta * r.Pt) + '</b></p>'];
     if (st.turbina === 'pelton') {
       c.push('<p>Velocidad del chorro: <i>v</i> = 0,98·√(2·<i>g</i>·<i>H</i>) = 0,98·√(2 · 9,81 · ' + L(r.H, 0) + ') = <b>' + L(r.vChorro, 1) + ' m/s</b></p>');
       c.push('<p>Las cucharas rinden más si van a la mitad de esa velocidad (' + L(r.vCuchara, 1) + ' m/s); a ' + r.rpm + ' rpm, eso pide una rueda de <i>D</i> = 60·<i>v</i><sub>cuchara</sub>/(π·<i>n</i>) = <b>' + L(r.D, 2) + ' m</b>.</p>');
     }
-    c.push('<p>Giro: el alternador tiene ' + r.pares + ' pares de polos; para dar 50 Hz tiene que girar a <i>n</i> = 60·<i>f</i>/<i>p</i> = 60 · 50 / ' + r.pares + ' = <b>' + L(r.rpm, 0) + ' rpm</b>.</p>');
+    c.push('<p>Giro: el alternador tiene ' + r.pares + ' pares de polos; para dar 50 Hz tiene que girar a <i>n</i> = 60·<i>f</i>/<i>p</i> = 60 · 50 / ' + r.pares + ' = <b>' + L(r.rpm, 0) + ' rpm</b>.' +
+      (parada ? ' Con el deflector, el alternador se desconecta de la red y la rueda frena hasta <b>0 rpm</b>.' : '') + '</p>');
     $('calculo').innerHTML = c.join('');
-    curva(r); estado(r);
+    curva(r, parada); estado(r);
     if (bucle) bucle.invalida();
   }
-  function curva(r) {
+  function curva(r, parada) {
     var W = 340, H = 190, x0 = 44, y0 = 150, x1 = 318, y1 = 20, sx = function (a) { return x0 + (x1 - x0) * a; }, sy = function (e) { return y0 - (y0 - y1) * (e - 0.4) / 0.6; };
     var o = ['<rect x="0" y="0" width="' + W + '" height="' + H + '" fill="#fff"/>'];
     for (var e = 0.4; e <= 1.001; e += 0.1) o.push('<line class="ej" x1="' + x0 + '" x2="' + x1 + '" y1="' + sy(e) + '" y2="' + sy(e) + '" stroke-opacity=".25"/><text class="et" x="' + (x0 - 4) + '" y="' + (sy(e) + 3) + '" text-anchor="end">' + Math.round(e * 100) + ' %</text>');
@@ -1164,9 +1169,9 @@ if (typeof module !== 'undefined') module.exports = TURBINAS_CALC;
       for (var q = 0.1; q <= 1.0001; q += 0.02) d.push((d.length ? 'L' : 'M') + sx(q).toFixed(1) + ',' + sy(Math.max(0.4, C.eta(t, q))).toFixed(1));
       o.push('<path d="' + d.join(' ') + '" fill="none" stroke="' + COL.curva[t] + '" stroke-width="' + (t === st.turbina ? 3 : 1.4) + '"' + (t === st.turbina ? '' : ' stroke-opacity=".75"') + '/>');
     });
-    o.push('<circle class="punto" cx="' + sx(r.a) + '" cy="' + sy(Math.max(0.4, r.eta)) + '" r="5"/>');
-    o.push('<desc>Rendimiento frente al caudal: la Pelton y la Kaplan mantienen un rendimiento alto a caudal parcial; la Francis lo pierde. Punto actual: ' +
-      NOMBRE[st.turbina] + ' al ' + Math.round(r.a * 100) + ' %, η = ' + L(r.eta * 100, 1) + ' %.</desc>');
+    if (!parada) o.push('<circle class="punto" cx="' + sx(r.a) + '" cy="' + sy(Math.max(0.4, r.eta)) + '" r="5"/>');
+    o.push('<desc>Rendimiento frente al caudal: la Pelton y la Kaplan mantienen un rendimiento alto a caudal parcial; la Francis lo pierde. ' +
+      (parada ? 'Pelton con el chorro desviado: sin agua en la rueda, no hay punto de funcionamiento.' : 'Punto actual: ' + NOMBRE[st.turbina] + ' al ' + Math.round(r.a * 100) + ' %, η = ' + L(r.eta * 100, 1) + ' %.') + '</desc>');
     $('curvaP').innerHTML = o.join('');
     $('ley-curva').innerHTML = todas.map(function (t) { return '<span style="color:' + COL.curva[t] + ';font-weight:700">― ' + NOMBRE[t] + '</span>'; }).join(' · ') +
       '. Rendimiento típico según el caudal.';
